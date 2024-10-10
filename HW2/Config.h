@@ -5,7 +5,7 @@
 #include <string_view>
 
 
-constexpr int SPP = 16;
+constexpr int SPP = 128;
 
 constexpr int SEED = 42;
 constexpr int RESOLUTION = 512;

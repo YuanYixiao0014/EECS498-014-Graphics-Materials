@@ -6,16 +6,55 @@
 #define TINYOBJLOADER_IMPLEMENTATION
 #include "tiny_obj_loader.h"
 
-
 Vec3 Scene::trace(const Ray &ray, int bouncesLeft, bool discardEmission) {
     if constexpr(DEBUG) {
         assert (ray.isNormalized());
     }
     if (bouncesLeft < 0) return {};
-
     // TODO...
-    
-    return {};
+    //get intersection
+    Intersection intersec = getIntersection(ray);
+    if(!intersec.happened) return {};       //no intersection, return
+    Vec3 irradiance = Vec3(0.0f, 0.0f, 0.0f);
+    Vec3 emission = intersec.getEmission();   //surface emission
+
+    //for direct radiance
+    Intersection sample_light = sampleLight();
+    Vec3 lightDir = sample_light.pos - intersec.pos;
+    float lightDist = lightDir.getLength();
+    lightDir.normalize();
+    Ray lightRay = {intersec.pos, lightDir};
+    Intersection intersec1 = getIntersection(lightRay);
+    Vec3 directRadiance = Vec3(0.0f, 0.0f, 0.0f);
+    if(intersec1.happened){
+        //calculate Direct Illumination
+        float pdf = 1/(lightArea);
+        float cosTheta = lightRay.dir.dot(intersec.getNormal());
+        float cosTheta1 = (-sample_light.getNormal()).dot(lightRay.dir);
+        Vec3 brdf_light = intersec.calcBRDF(-lightRay.dir, -ray.dir);
+        directRadiance = (1/pdf) * intersec1.getEmission() * brdf_light 
+                * cosTheta * cosTheta1 / (lightDist * lightDist);
+    }
+    //for indirect radiance
+    Vec3 direction = Random::cosWeightedHemisphere(intersec.getNormal());
+    Ray nextRay = {intersec.pos, direction};
+    Intersection intersec2 = getIntersection(nextRay);
+    if(intersec2.happened){
+        //calculate indirect Illumination
+        float pdf = (intersec.getNormal().dot(direction))/(PI);
+        float cosTheta = nextRay.dir.dot(intersec.getNormal());
+        Vec3 brdf = intersec.calcBRDF(-nextRay.dir, -ray.dir);
+        //trace the ray without the emission:
+        Vec3 indirectRadiance = (1/pdf) 
+            * trace(nextRay, bouncesLeft - 1, true) * brdf * cosTheta;
+        if(discardEmission){
+            irradiance = directRadiance + indirectRadiance ;
+        }else{
+            irradiance = emission + directRadiance + indirectRadiance;
+        }
+    }
+
+    return irradiance;
 }
 
 tinyobj::ObjReader Scene::reader {};

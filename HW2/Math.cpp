@@ -159,8 +159,11 @@ Vec3 Random::cosWeightedHemisphere(const Vec3 &normal) {
         Generate a direction on the hemisphere oriented towards the positive y axis, 
             cosine-weighted by the elevation angle.
     */
-    float azimuth = 0.0f;
-    float elevation = 0.0f;
+   float pRand = Random::randUniformFloat();
+   float qRand = Random::randUniformFloat();
+
+    float azimuth = 2.0f * PI * pRand;
+    float elevation = acos(std::sqrt(qRand));
 
     // Convert spherical coordinates to Cartesian
     float x = cos(azimuth) * sin(elevation);
